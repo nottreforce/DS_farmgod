@@ -873,7 +873,7 @@ window.FarmGod.Main = (function (Library, Translation) {
         .find('tr[id^="village_"]')
         .map((i, el) => {
           let $el = $(el);
-          let $attacks = $el.find('img[src*="graphic/command/attack"]');
+          let $attacks = $el.find('img[src*="command/attack"]');
           let attackTitle =
             $attacks.first().attr('data-title') ||
             $attacks.first().attr('title') ||
@@ -1001,10 +1001,13 @@ window.FarmGod.Main = (function (Library, Translation) {
         let needsB =
           farmIndex.hasOwnProperty('color') &&
           ['yellow', 'red'].includes(farmIndex.color);
+        let hasRunningAttack =
+          farmIndex.running_attacks > 0 ||
+          (data.commands.hasOwnProperty(el.coord) &&
+            data.commands[el.coord].length > 0);
         if (
           needsB &&
-          (bFarmTargets.includes(el.coord) ||
-            farmIndex.running_attacks > 0)
+          (bFarmTargets.includes(el.coord) || hasRunningAttack)
         )
           return;
 
