@@ -873,6 +873,15 @@ window.FarmGod.Main = (function (Library, Translation) {
         .find('tr[id^="village_"]')
         .map((i, el) => {
           let $el = $(el);
+          let $attacks = $el.find('img[src*="graphic/command/attack"]');
+          let attackTitle =
+            $attacks.first().attr('data-title') ||
+            $attacks.first().attr('title') ||
+            '';
+          let attackCountMatch = attackTitle.match(/\d+/);
+          let runningAttacks = attackCountMatch
+            ? attackCountMatch[0].toNumber()
+            : $attacks.length;
 
           return (data.farms.farms[
             $el
@@ -886,6 +895,7 @@ window.FarmGod.Main = (function (Library, Translation) {
               .find('img[src*="graphic/dots/"]')
               .attr('src')
               .match(/dots\/(green|yellow|red|blue|red_blue)/)[1],
+            running_attacks: runningAttacks,
             max_loot: $el.find('img[src*="max_loot/1"]').length > 0,
           });
         });
@@ -966,21 +976,39 @@ window.FarmGod.Main = (function (Library, Translation) {
   ) {
     let plan = { counter: 0, farms: {} };
     let serverTime = Math.round(lib.getCurrentServerTime() / 1000);
+    let bFarmTargets = [];
 
     for (let prop in data.villages) {
       let orderedFarms = Object.keys(data.farms.farms)
         .map((key) => {
-          return { coord: key, dis: lib.getDistance(prop, key) };
+          let farmIndex = data.farms.farms[key];
+
+          return {
+            coord: key,
+            dis: lib.getDistance(prop, key),
+            needsB:
+              farmIndex.hasOwnProperty('color') &&
+              ['yellow', 'red'].includes(farmIndex.color),
+          };
         })
-        .sort((a, b) => (a.dis > b.dis ? 1 : -1));
+        .sort((a, b) => {
+          if (a.needsB != b.needsB) return a.needsB ? -1 : 1;
+          return a.dis > b.dis ? 1 : -1;
+        });
 
       orderedFarms.forEach((el) => {
         let farmIndex = data.farms.farms[el.coord];
-        let template_name =
+        let needsB =
           farmIndex.hasOwnProperty('color') &&
-            ['yellow', 'red'].includes(farmIndex.color)
-            ? 'b'
-            : 'a';
+          ['yellow', 'red'].includes(farmIndex.color);
+        if (
+          needsB &&
+          (bFarmTargets.includes(el.coord) ||
+            farmIndex.running_attacks > 0)
+        )
+          return;
+
+        let template_name = needsB ? 'b' : 'a';
         let template = data.farms.templates[template_name];
         let unitsLeft = lib.subtractArrays(
           data.villages[prop].units,
@@ -1026,6 +1054,7 @@ window.FarmGod.Main = (function (Library, Translation) {
 
           data.villages[prop].units = unitsLeft;
           data.commands[el.coord].push(arrival);
+          if (needsB) bFarmTargets.push(el.coord);
         }
       });
     }
