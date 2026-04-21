@@ -502,6 +502,7 @@ window.FarmGod.Main = (function (Library, Translation) {
                   optionMaxloot,
                   data
                 );
+                plan = deduplicateBTargets(plan);
                 $('.farmGodContent').remove();
                 $('#am_widget_Farm')
                   .first()
@@ -563,7 +564,36 @@ window.FarmGod.Main = (function (Library, Translation) {
         curVillage = $(this).data('id');
         UI.SuccessMessage(t.messages.villageChanged);
         $(this).closest('tr').remove();
+    });
+  };
+
+  const deduplicateBTargets = function (plan) {
+    let usedBTargets = {};
+    plan.counter = 0;
+
+    for (let prop in plan.farms) {
+      plan.farms[prop] = plan.farms[prop].filter((farm) => {
+        let isB =
+          farm.template.hasOwnProperty('name') &&
+          farm.template.name.toLowerCase() == 'b';
+        let targetKey =
+          farm.target.hasOwnProperty('id') && farm.target.id
+            ? `id:${farm.target.id}`
+            : `coord:${farm.target.coord}`;
+
+        if (isB && usedBTargets.hasOwnProperty(targetKey)) {
+          return false;
+        }
+
+        if (isB) usedBTargets[targetKey] = true;
+        plan.counter++;
+        return true;
       });
+
+      if (plan.farms[prop].length == 0) delete plan.farms[prop];
+    }
+
+    return plan;
   };
 
   const buildOptions = function () {
@@ -651,12 +681,25 @@ window.FarmGod.Main = (function (Library, Translation) {
                 <tr><th style="text-align:center;">${t.table.origin}</th><th style="text-align:center;">${t.table.target}</th><th style="text-align:center;">${t.table.fields}</th><th style="text-align:center;">${t.table.farm}</th></tr>`;
 
     if (!$.isEmptyObject(plan)) {
+      let renderedBTargets = {};
+
       for (let prop in plan) {
         if (game_data.market == 'nl') {
           html += `<tr><td colspan="4" style="background: #e7d098;"><input type="button" class="btn switchVillage" data-id="${plan[prop][0].origin.id}" value="${t.table.goTo} ${plan[prop][0].origin.name} (${plan[prop][0].origin.coord})" style="float:right;"></td></tr>`;
         }
 
         plan[prop].forEach((val, i) => {
+          let isB =
+            val.template.hasOwnProperty('name') &&
+            val.template.name.toLowerCase() == 'b';
+          let targetKey =
+            val.target.hasOwnProperty('id') && val.target.id
+              ? `id:${val.target.id}`
+              : `coord:${val.target.coord}`;
+          if (isB && renderedBTargets.hasOwnProperty(targetKey))
+            return;
+          if (isB) renderedBTargets[targetKey] = true;
+
           html += `<tr class="farmRow row_${i % 2 == 0 ? 'a' : 'b'}">
                     <td style="text-align:center;"><a href="${game_data.link_base_pure
             }info_village&id=${val.origin.id}">${val.origin.name} (${val.origin.coord
@@ -1072,22 +1115,6 @@ window.FarmGod.Main = (function (Library, Translation) {
           if (needsB) bFarmTargets[el.coord] = true;
         }
       });
-    }
-
-    let usedBTargets = {};
-    for (let prop in plan.farms) {
-      plan.farms[prop] = plan.farms[prop].filter((farm) => {
-        if (farm.template.name != 'b') return true;
-        if (usedBTargets.hasOwnProperty(farm.target.coord)) {
-          plan.counter--;
-          return false;
-        }
-
-        usedBTargets[farm.target.coord] = true;
-        return true;
-      });
-
-      if (plan.farms[prop].length == 0) delete plan.farms[prop];
     }
 
     return plan;
