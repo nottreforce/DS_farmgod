@@ -878,8 +878,12 @@ window.FarmGod.Main = (function (Library, Translation) {
             $attacks.first().data('title') ||
             $attacks.first().attr('data-title') ||
             $attacks.first().attr('title') ||
-            $el.html().match(/Es laufen [^"<]+Angriff[^"<]*/)?.[0] ||
             '';
+          let attackTitleFallback = $el
+            .html()
+            .match(/Es laufen [^"<]+Angriff[^"<]*/);
+          if (!attackTitle && attackTitleFallback)
+            attackTitle = attackTitleFallback[0];
           let attackCountMatch = attackTitle.match(/\d+/);
           let runningAttacks =
             $attacks.length == 0
@@ -899,7 +903,7 @@ window.FarmGod.Main = (function (Library, Translation) {
             color: $el
               .find('img[src*="graphic/dots/"]')
               .attr('src')
-              .match(/dots\/(green|yellow|red|blue|red_blue)/)[1],
+              .match(/dots\/(red_blue|green|yellow|red|blue)/)[1],
             running_attacks: runningAttacks,
             max_loot: $el.find('img[src*="max_loot/1"]').length > 0,
           });
@@ -934,15 +938,6 @@ window.FarmGod.Main = (function (Library, Translation) {
     };
 
     let filterFarms = () => {
-      data.farms.farms = Object.fromEntries(
-        Object.entries(data.farms.farms).filter(([key, val]) => {
-          return (
-            !val.hasOwnProperty('color') ||
-            val.color != 'red_blue'
-          );
-        })
-      );
-
       return data;
     };
 
@@ -981,7 +976,25 @@ window.FarmGod.Main = (function (Library, Translation) {
   ) {
     let plan = { counter: 0, farms: {} };
     let serverTime = Math.round(lib.getCurrentServerTime() / 1000);
-    let bFarmTargets = [];
+    let bFarmTargets = {};
+    let hasRunningAttack = (coord) => {
+      let farmIndex = data.farms.farms[coord];
+
+      return (
+        farmIndex.running_attacks > 0 ||
+        (data.commands.hasOwnProperty(coord) &&
+          data.commands[coord].length > 0)
+      );
+    };
+    let needsFarmB = (coord) => {
+      let farmIndex = data.farms.farms[coord];
+
+      return (
+        farmIndex.hasOwnProperty('color') &&
+        ['yellow', 'red', 'red_blue'].includes(farmIndex.color) &&
+        !hasRunningAttack(coord)
+      );
+    };
 
     for (let prop in data.villages) {
       let orderedFarms = Object.keys(data.farms.farms)
@@ -991,9 +1004,7 @@ window.FarmGod.Main = (function (Library, Translation) {
           return {
             coord: key,
             dis: lib.getDistance(prop, key),
-            needsB:
-              farmIndex.hasOwnProperty('color') &&
-              ['yellow', 'red'].includes(farmIndex.color),
+            needsB: needsFarmB(key),
           };
         })
         .sort((a, b) => {
@@ -1003,18 +1014,14 @@ window.FarmGod.Main = (function (Library, Translation) {
 
       orderedFarms.forEach((el) => {
         let farmIndex = data.farms.farms[el.coord];
-        let needsB =
-          farmIndex.hasOwnProperty('color') &&
-          ['yellow', 'red'].includes(farmIndex.color);
-        let hasRunningAttack =
-          farmIndex.running_attacks > 0 ||
-          (data.commands.hasOwnProperty(el.coord) &&
-            data.commands[el.coord].length > 0);
+        let needsB = needsFarmB(el.coord);
         if (
-          needsB &&
-          (bFarmTargets.includes(el.coord) || hasRunningAttack)
+          farmIndex.hasOwnProperty('color') &&
+          ['yellow', 'red', 'red_blue'].includes(farmIndex.color) &&
+          !needsB
         )
           return;
+        if (needsB && bFarmTargets.hasOwnProperty(el.coord)) return;
 
         let template_name = needsB ? 'b' : 'a';
         let template = data.farms.templates[template_name];
@@ -1062,7 +1069,7 @@ window.FarmGod.Main = (function (Library, Translation) {
 
           data.villages[prop].units = unitsLeft;
           data.commands[el.coord].push(arrival);
-          if (needsB) bFarmTargets.push(el.coord);
+          if (needsB) bFarmTargets[el.coord] = true;
         }
       });
     }
