@@ -1074,6 +1074,22 @@ window.FarmGod.Main = (function (Library, Translation) {
       });
     }
 
+    let usedBTargets = {};
+    for (let prop in plan.farms) {
+      plan.farms[prop] = plan.farms[prop].filter((farm) => {
+        if (farm.template.name != 'b') return true;
+        if (usedBTargets.hasOwnProperty(farm.target.coord)) {
+          plan.counter--;
+          return false;
+        }
+
+        usedBTargets[farm.target.coord] = true;
+        return true;
+      });
+
+      if (plan.farms[prop].length == 0) delete plan.farms[prop];
+    }
+
     return plan;
   };
 
