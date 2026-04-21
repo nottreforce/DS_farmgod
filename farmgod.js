@@ -875,13 +875,18 @@ window.FarmGod.Main = (function (Library, Translation) {
           let $el = $(el);
           let $attacks = $el.find('img[src*="command/attack"]');
           let attackTitle =
+            $attacks.first().data('title') ||
             $attacks.first().attr('data-title') ||
             $attacks.first().attr('title') ||
+            $el.html().match(/Es laufen [^"<]+Angriff[^"<]*/)?.[0] ||
             '';
           let attackCountMatch = attackTitle.match(/\d+/);
-          let runningAttacks = attackCountMatch
-            ? attackCountMatch[0].toNumber()
-            : $attacks.length;
+          let runningAttacks =
+            $attacks.length == 0
+              ? 0
+              : attackCountMatch
+                ? attackCountMatch[0].toNumber()
+                : 1;
 
           return (data.farms.farms[
             $el
