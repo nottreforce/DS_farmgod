@@ -492,8 +492,7 @@ window.FarmGod.Main = (function (Library, Translation) {
               getData(
                 optionGroup,
                 optionNewbarbs,
-                optionLosses,
-                optionMaxloot
+                optionLosses
               ).then((data) => {
                 Dialog.close();
 
@@ -682,7 +681,7 @@ window.FarmGod.Main = (function (Library, Translation) {
     return html;
   };
 
-  const getData = function (group, newbarbs, losses, statusFarmB) {
+  const getData = function (group, newbarbs, losses) {
     let data = {
       villages: {},
       commands: {},
@@ -924,10 +923,7 @@ window.FarmGod.Main = (function (Library, Translation) {
         Object.entries(data.farms.farms).filter(([key, val]) => {
           return (
             !val.hasOwnProperty('color') ||
-            (val.color != 'red_blue' &&
-              (!['red', 'yellow'].includes(val.color) ||
-                statusFarmB ||
-                (val.color == 'yellow' && losses)))
+            val.color != 'red_blue'
           );
         })
       );
@@ -981,8 +977,7 @@ window.FarmGod.Main = (function (Library, Translation) {
       orderedFarms.forEach((el) => {
         let farmIndex = data.farms.farms[el.coord];
         let template_name =
-          optionMaxloot &&
-            farmIndex.hasOwnProperty('color') &&
+          farmIndex.hasOwnProperty('color') &&
             ['yellow', 'red'].includes(farmIndex.color)
             ? 'b'
             : 'a';
