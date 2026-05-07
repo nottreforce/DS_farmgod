@@ -447,7 +447,7 @@ window.FarmGod.Translation = (function () {
 window.FarmGod.Main = (function (Library, Translation) {
   const lib = Library;
   const t = Translation.get();
-  const VERSION = '1.1.1';
+  const VERSION = '1.1.3';
   let curVillage = null;
   let farmBusy = false;
 
@@ -875,6 +875,11 @@ window.FarmGod.Main = (function (Library, Translation) {
         .map((i, el) => {
           let $el = $(el);
 
+          let color = $el
+            .find('img[src*="graphic/dots/"]')
+            .attr('src')
+            .match(/dots\/(green|yellow|red|blue|red_blue)/)[1];
+
           return (data.farms.farms[
             $el
               .find('a[href*="screen=report&mode=all&view="]')
@@ -883,10 +888,8 @@ window.FarmGod.Main = (function (Library, Translation) {
               .toCoord()
           ] = {
             id: $el.attr('id').split('_')[1].toNumber(),
-            color: $el
-              .find('img[src*="graphic/dots/"]')
-              .attr('src')
-              .match(/dots\/(green|yellow|red|blue|red_blue)/)[1],
+            color: color,
+            had_losses: ['yellow', 'red', 'red_blue'].includes(color),
             max_loot: $el.find('img[src*="max_loot/1"]').length > 0,
           });
         });
@@ -924,9 +927,8 @@ window.FarmGod.Main = (function (Library, Translation) {
         Object.entries(data.farms.farms).filter(([key, val]) => {
           return (
             !val.hasOwnProperty('color') ||
-            (val.color != 'red' &&
-              val.color != 'red_blue' &&
-              (val.color != 'yellow' || losses))
+            val.color != 'yellow' ||
+            losses
           );
         })
       );
@@ -984,8 +986,8 @@ window.FarmGod.Main = (function (Library, Translation) {
         let farmIndex = data.farms.farms[el.coord];
         let template_name =
           optionMaxloot &&
-            farmIndex.hasOwnProperty('max_loot') &&
-            farmIndex.max_loot
+            farmIndex.hasOwnProperty('color') &&
+            ['yellow', 'red', 'red_blue'].includes(farmIndex.color)
             ? 'b'
             : 'a';
         let template = data.farms.templates[template_name];
