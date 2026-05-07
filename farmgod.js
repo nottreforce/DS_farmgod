@@ -447,7 +447,7 @@ window.FarmGod.Translation = (function () {
 window.FarmGod.Main = (function (Library, Translation) {
   const lib = Library;
   const t = Translation.get();
-  const VERSION = '1.1.3';
+  const VERSION = '1.1.4';
   let curVillage = null;
   let farmBusy = false;
 
@@ -975,21 +975,27 @@ window.FarmGod.Main = (function (Library, Translation) {
     for (let prop in data.villages) {
       let orderedFarms = Object.keys(data.farms.farms)
         .map((key) => {
+          let farm = data.farms.farms[key];
           return {
             coord: key,
             dis: lib.getDistance(prop, key),
+            isBTarget:
+              optionMaxloot &&
+              farm.hasOwnProperty('color') &&
+              ['yellow', 'red', 'red_blue'].includes(farm.color),
           };
         })
-        .sort((a, b) => (a.dis > b.dis ? 1 : -1));
+        .sort((a, b) => {
+          if (a.isBTarget !== b.isBTarget) {
+            return a.isBTarget ? -1 : 1;
+          }
+
+          return a.dis > b.dis ? 1 : -1;
+        });
 
       orderedFarms.forEach((el) => {
         let farmIndex = data.farms.farms[el.coord];
-        let template_name =
-          optionMaxloot &&
-            farmIndex.hasOwnProperty('color') &&
-            ['yellow', 'red', 'red_blue'].includes(farmIndex.color)
-            ? 'b'
-            : 'a';
+        let template_name = el.isBTarget ? 'b' : 'a';
         let template = data.farms.templates[template_name];
         let unitsLeft = lib.subtractArrays(
           data.villages[prop].units,
