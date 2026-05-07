@@ -447,6 +447,7 @@ window.FarmGod.Translation = (function () {
 window.FarmGod.Main = (function (Library, Translation) {
   const lib = Library;
   const t = Translation.get();
+  const VERSION = '1.1.1';
   let curVillage = null;
   let farmBusy = false;
 
@@ -619,7 +620,7 @@ window.FarmGod.Main = (function (Library, Translation) {
             : ''
           }
                 </table></div><br><input type="button" class="btn optionButton" value="${t.options.button
-          }"></div>`;
+          }"><div style="margin-top:6px;font-size:10px;color:#5f4b2f;">Version ${VERSION}</div></div>`;
       }
     );
   };
@@ -689,7 +690,7 @@ window.FarmGod.Main = (function (Library, Translation) {
     };
 
     let villagesProcessor = ($html) => {
-      let skipUnits = ['ram', 'catapult', 'knight', 'snob', 'militia'];
+      let skipUnits = ['snob', 'militia'];
       const mobileCheck = $('#mobileHeader').length > 0;
 
       if (mobileCheck) {
