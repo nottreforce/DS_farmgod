@@ -502,7 +502,6 @@ window.FarmGod.Main = (function (Library, Translation) {
                   optionMaxloot,
                   data
                 );
-                plan = deduplicateBTargets(plan);
                 $('.farmGodContent').remove();
                 $('#am_widget_Farm')
                   .first()
@@ -565,35 +564,6 @@ window.FarmGod.Main = (function (Library, Translation) {
         UI.SuccessMessage(t.messages.villageChanged);
         $(this).closest('tr').remove();
     });
-  };
-
-  const deduplicateBTargets = function (plan) {
-    let usedBTargets = {};
-    plan.counter = 0;
-
-    for (let prop in plan.farms) {
-      plan.farms[prop] = plan.farms[prop].filter((farm) => {
-        let isB =
-          farm.template.hasOwnProperty('name') &&
-          farm.template.name.toLowerCase() == 'b';
-        let targetKey =
-          farm.target.hasOwnProperty('id') && farm.target.id
-            ? `id:${farm.target.id}`
-            : `coord:${farm.target.coord}`;
-
-        if (isB && usedBTargets.hasOwnProperty(targetKey)) {
-          return false;
-        }
-
-        if (isB) usedBTargets[targetKey] = true;
-        plan.counter++;
-        return true;
-      });
-
-      if (plan.farms[prop].length == 0) delete plan.farms[prop];
-    }
-
-    return plan;
   };
 
   const buildOptions = function () {
@@ -681,25 +651,12 @@ window.FarmGod.Main = (function (Library, Translation) {
                 <tr><th style="text-align:center;">${t.table.origin}</th><th style="text-align:center;">${t.table.target}</th><th style="text-align:center;">${t.table.fields}</th><th style="text-align:center;">${t.table.farm}</th></tr>`;
 
     if (!$.isEmptyObject(plan)) {
-      let renderedBTargets = {};
-
       for (let prop in plan) {
         if (game_data.market == 'nl') {
           html += `<tr><td colspan="4" style="background: #e7d098;"><input type="button" class="btn switchVillage" data-id="${plan[prop][0].origin.id}" value="${t.table.goTo} ${plan[prop][0].origin.name} (${plan[prop][0].origin.coord})" style="float:right;"></td></tr>`;
         }
 
         plan[prop].forEach((val, i) => {
-          let isB =
-            val.template.hasOwnProperty('name') &&
-            val.template.name.toLowerCase() == 'b';
-          let targetKey =
-            val.target.hasOwnProperty('id') && val.target.id
-              ? `id:${val.target.id}`
-              : `coord:${val.target.coord}`;
-          if (isB && renderedBTargets.hasOwnProperty(targetKey))
-            return;
-          if (isB) renderedBTargets[targetKey] = true;
-
           html += `<tr class="farmRow row_${i % 2 == 0 ? 'a' : 'b'}">
                     <td style="text-align:center;"><a href="${game_data.link_base_pure
             }info_village&id=${val.origin.id}">${val.origin.name} (${val.origin.coord
@@ -916,24 +873,6 @@ window.FarmGod.Main = (function (Library, Translation) {
         .find('tr[id^="village_"]')
         .map((i, el) => {
           let $el = $(el);
-          let $attacks = $el.find('img[src*="command/attack"]');
-          let attackTitle =
-            $attacks.first().data('title') ||
-            $attacks.first().attr('data-title') ||
-            $attacks.first().attr('title') ||
-            '';
-          let attackTitleFallback = $el
-            .html()
-            .match(/Es laufen [^"<]+Angriff[^"<]*/);
-          if (!attackTitle && attackTitleFallback)
-            attackTitle = attackTitleFallback[0];
-          let attackCountMatch = attackTitle.match(/\d+/);
-          let runningAttacks =
-            $attacks.length == 0
-              ? 0
-              : attackCountMatch
-                ? attackCountMatch[0].toNumber()
-                : 1;
 
           return (data.farms.farms[
             $el
@@ -946,8 +885,7 @@ window.FarmGod.Main = (function (Library, Translation) {
             color: $el
               .find('img[src*="graphic/dots/"]')
               .attr('src')
-              .match(/dots\/(red_blue|green|yellow|red|blue)/)[1],
-            running_attacks: runningAttacks,
+              .match(/dots\/(green|yellow|red|blue|red_blue)/)[1],
             max_loot: $el.find('img[src*="max_loot/1"]').length > 0,
           });
         });
@@ -1019,54 +957,24 @@ window.FarmGod.Main = (function (Library, Translation) {
   ) {
     let plan = { counter: 0, farms: {} };
     let serverTime = Math.round(lib.getCurrentServerTime() / 1000);
-    let bFarmTargets = {};
-    let hasRunningAttack = (coord) => {
-      let farmIndex = data.farms.farms[coord];
-
-      return (
-        farmIndex.running_attacks > 0 ||
-        (data.commands.hasOwnProperty(coord) &&
-          data.commands[coord].length > 0)
-      );
-    };
-    let needsFarmB = (coord) => {
-      let farmIndex = data.farms.farms[coord];
-
-      return (
-        farmIndex.hasOwnProperty('color') &&
-        ['yellow', 'red', 'red_blue'].includes(farmIndex.color) &&
-        !hasRunningAttack(coord)
-      );
-    };
 
     for (let prop in data.villages) {
       let orderedFarms = Object.keys(data.farms.farms)
         .map((key) => {
-          let farmIndex = data.farms.farms[key];
-
           return {
             coord: key,
             dis: lib.getDistance(prop, key),
-            needsB: needsFarmB(key),
           };
         })
-        .sort((a, b) => {
-          if (a.needsB != b.needsB) return a.needsB ? -1 : 1;
-          return a.dis > b.dis ? 1 : -1;
-        });
+        .sort((a, b) => (a.dis > b.dis ? 1 : -1));
 
       orderedFarms.forEach((el) => {
         let farmIndex = data.farms.farms[el.coord];
-        let needsB = needsFarmB(el.coord);
-        if (
+        let template_name =
           farmIndex.hasOwnProperty('color') &&
-          ['yellow', 'red', 'red_blue'].includes(farmIndex.color) &&
-          !needsB
-        )
-          return;
-        if (needsB && bFarmTargets.hasOwnProperty(el.coord)) return;
-
-        let template_name = needsB ? 'b' : 'a';
+            ['yellow', 'red'].includes(farmIndex.color)
+            ? 'b'
+            : 'a';
         let template = data.farms.templates[template_name];
         let unitsLeft = lib.subtractArrays(
           data.villages[prop].units,
@@ -1112,7 +1020,6 @@ window.FarmGod.Main = (function (Library, Translation) {
 
           data.villages[prop].units = unitsLeft;
           data.commands[el.coord].push(arrival);
-          if (needsB) bFarmTargets[el.coord] = true;
         }
       });
     }
