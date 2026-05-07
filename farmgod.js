@@ -919,6 +919,17 @@ window.FarmGod.Main = (function (Library, Translation) {
     };
 
     let filterFarms = () => {
+      data.farms.farms = Object.fromEntries(
+        Object.entries(data.farms.farms).filter(([key, val]) => {
+          return (
+            !val.hasOwnProperty('color') ||
+            (val.color != 'red' &&
+              val.color != 'red_blue' &&
+              (val.color != 'yellow' || losses))
+          );
+        })
+      );
+
       return data;
     };
 
@@ -971,8 +982,9 @@ window.FarmGod.Main = (function (Library, Translation) {
       orderedFarms.forEach((el) => {
         let farmIndex = data.farms.farms[el.coord];
         let template_name =
-          farmIndex.hasOwnProperty('color') &&
-            ['yellow', 'red'].includes(farmIndex.color)
+          optionMaxloot &&
+            farmIndex.hasOwnProperty('max_loot') &&
+            farmIndex.max_loot
             ? 'b'
             : 'a';
         let template = data.farms.templates[template_name];
